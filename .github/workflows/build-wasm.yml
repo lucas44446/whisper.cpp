@@ -34,32 +34,29 @@ jobs:
       #   run: cmake --build build-wasm -j 4 --target whisper.wasm
 
       # Zbieranie plików demo (zależnie od wersji repo mogą być w różnych miejscach)
-      - name: Collect demo files (best-effort)
-        run: |
-          mkdir -p dist
-          # whisper.wasm + main.js + index.html – tylko gdy istnieją (stare SHA)
-          for p in \
-            build-wasm/bin/whisper.wasm \
-            build-wasm/examples/whisper.wasm/whisper.wasm \
-            build-wasm/whisper.wasm/whisper.wasm
-          do
-            [ -f "$p" ] && cp -v "$p" dist/whisper.wasm
-          done
-          for p in \
-            build-wasm/examples/whisper.wasm/main.js \
-            build-wasm/whisper.wasm/main.js \
-            examples/whisper.wasm/main.js
-          do
-            [ -f "$p" ] && cp -v "$p" dist/main.js
-          done
-          for p in \
-            build-wasm/examples/whisper.wasm/index.html \
-            build-wasm/whisper.wasm/index.html
-          do
-            [ -f "$p" ] && cp -v "$p" dist/index.html
-          done
-          [ -f dist/index.html ] || ( [ -f examples/whisper.wasm/index-tmpl.html ] && cp -v examples/whisper.wasm/index-tmpl.html dist/index.html || true )
-          ls -la dist || true
+        - name: Collect demo files
+    run: |
+      mkdir -p dist
+
+      # main.js z wbudowanym WASM (najnowszy ggml/whisper.cpp)
+      if [ -f build-wasm/bin/main.js ]; then
+        cp -v build-wasm/bin/main.js dist/
+      fi
+
+      # (opcjonalnie – stream/command/bench)
+      for f in stream.js command.js bench.js; do
+        [ -f "build-wasm/bin/$f" ] && cp -v "build-wasm/bin/$f" dist/
+      done
+
+      # index.html
+      if [ -f build-wasm/examples/whisper.wasm/index.html ]; then
+        cp -v build-wasm/examples/whisper.wasm/index.html dist/index.html
+      else
+        cp -v examples/whisper.wasm/index-tmpl.html dist/index.html
+      fi
+
+      ls -la dist
+
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
