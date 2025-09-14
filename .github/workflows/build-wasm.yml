@@ -15,22 +15,49 @@ jobs:
         with:
           version: latest
 
+      # Konfiguracja z KATALOGU GŁÓWNEGO repo (nie z examples/)
       - name: Configure (emcmake)
-        run: emcmake cmake -S examples/whisper.wasm -B build-wasm
+        run: |
+          emcmake cmake -S . -B build-wasm \
+            -DWHISPER_WASM=ON \
+            -DGGML_WASM=ON \
+            -DGGML_WASM_SIMD=ON
 
-      - name: Build
-        run: cmake --build build-wasm -j 4
+      # Budujemy KONKRETNY target: whisper.wasm
+      - name: Build target
+        run: cmake --build build-wasm -j 4 --target whisper.wasm
 
+      # Zbieramy pliki wygenerowane przez przykład
       - name: Collect demo files
         run: |
           mkdir -p dist
-          cp -v build-wasm/whisper.wasm dist/ || true
-          cp -v build-wasm/main.js dist/ || true
-          if [ -f build-wasm/index.html ]; then
-            cp -v build-wasm/index.html dist/
-          else
-            cp -v examples/whisper.wasm/index-tmpl.html dist/index.html
-          fi
+          # Spróbuj typowych lokalizacji w buildzie
+          for p in \
+            "build-wasm/bin/whisper.wasm" \
+            "build-wasm/examples/whisper.wasm/whisper.wasm" \
+            "build-wasm/whisper.wasm/whisper.wasm"
+          do
+            [ -f "$p" ] && cp -v "$p" dist/whisper.wasm
+          done
+
+          for p in \
+            "build-wasm/examples/whisper.wasm/main.js" \
+            "build-wasm/whisper.wasm/main.js" \
+            "examples/whisper.wasm/main.js"
+          do
+            [ -f "$p" ] && cp -v "$p" dist/main.js
+          done
+
+          for p in \
+            "build-wasm/examples/whisper.wasm/index.html" \
+            "build-wasm/whisper.wasm/index.html"
+          do
+            [ -f "$p" ] && cp -v "$p" dist/index.html
+          done
+
+          # Awaryjnie użyj szablonu, jeśli index.html nie powstał
+          [ -f dist/index.html ] || cp -v examples/whisper.wasm/index-tmpl.html dist/index.html
+
           ls -la dist
 
       - name: Upload artifact
@@ -38,3 +65,4 @@ jobs:
         with:
           name: whisper-wasm-demo
           path: dist/*
+
