@@ -1,0 +1,40 @@
+name: Build whisper.wasm demo
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: latest
+
+      - name: Configure (emcmake)
+        run: emcmake cmake -S examples/whisper.wasm -B build-wasm
+
+      - name: Build
+        run: cmake --build build-wasm -j 4
+
+      - name: Collect demo files
+        run: |
+          mkdir -p dist
+          cp -v build-wasm/whisper.wasm dist/ || true
+          cp -v build-wasm/main.js dist/ || true
+          if [ -f build-wasm/index.html ]; then
+            cp -v build-wasm/index.html dist/
+          else
+            cp -v examples/whisper.wasm/index-tmpl.html dist/index.html
+          fi
+          ls -la dist
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: whisper-wasm-demo
+          path: dist/*
